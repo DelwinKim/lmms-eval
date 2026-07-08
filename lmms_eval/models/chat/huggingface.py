@@ -89,10 +89,16 @@ class Huggingface(lmms):
 
         self.trust_remote_code = trust_remote_code
         config = AutoConfig.from_pretrained(pretrained, trust_remote_code=trust_remote_code)
-        if config.model_type in AutoModelForCausalLM._model_mapping.keys():
-            model_cls = AutoModelForCausalLM
-        elif config.model_type in AutoModelForImageTextToText._model_mapping.keys():
+        # NOTE: `_model_mapping.keys()` yields config CLASSES (not model_type
+        # strings) in recent transformers, so membership must be checked with
+        # `type(config)`. In this multimodal eval harness, prefer the
+        # image-text-to-text head, then causal-LM, then the bare base model.
+        # (The old `config.model_type in ....keys()` check silently always failed
+        # and fell through to AutoModel, loading a base model with no `generate`.)
+        if type(config) in AutoModelForImageTextToText._model_mapping:
             model_cls = AutoModelForImageTextToText
+        elif type(config) in AutoModelForCausalLM._model_mapping:
+            model_cls = AutoModelForCausalLM
         else:
             model_cls = AutoModel
 
@@ -233,7 +239,18 @@ class Huggingface(lmms):
             images = self.flatten(images)
             videos = self.flatten(videos)
             audios = self.flatten(audios)
-            kwargs = {"images": images, "videos": videos, "audios": audios}
+            # Only pass media kwargs that are actually present, and use the
+            # current transformers kwarg names. Newer processors (e.g. gemma-4 on
+            # transformers>=5.11) renamed the audio kwarg "audios" -> "audio" and
+            # reject the deprecated name even when the list is empty, so passing
+            # empty media unconditionally breaks vision-only tasks.
+            kwargs = {}
+            if images:
+                kwargs["images"] = images
+            if videos:
+                kwargs["videos"] = videos
+            if audios:
+                kwargs["audio"] = audios
             inputs = self.processor(text=texts, padding=True, return_tensors="pt", **kwargs)
 
             if self.device_map == "auto":
