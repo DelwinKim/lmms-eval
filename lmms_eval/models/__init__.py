@@ -39,6 +39,7 @@ AVAILABLE_SIMPLE_MODELS = {
     "gemini_api": "GeminiAPI",
     "gpt4o_audio": "GPT4OAudio",
     "gemma3": "Gemma3",
+    "gemma4": "Gemma4",
     "gpt4v": "GPT4V",
     "idefics2": "Idefics2",
     "illume_plus": "ILLUMEPlus",
