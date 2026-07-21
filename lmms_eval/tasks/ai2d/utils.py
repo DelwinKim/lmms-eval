@@ -77,3 +77,28 @@ class MultiChoiceRegexFilter(ExtendedRegexFilter):
             filtered_resps.append(filtered[0])
 
         return filtered_resps
+
+
+class DirectAnswerFilter:
+    """Extract an AI2D option only from a direct or explicitly labeled answer."""
+
+    _DIRECT_RE = re.compile(r"^\s*([A-D])\s*[.):]?\s*$", re.IGNORECASE)
+    _LABELED_RE = re.compile(
+        r"(?:final\s+answer|correct\s+answer|answer|option|choice)" r"\s*(?:is|:|=)?\s*(?:option\s*)?[\(\[]?([A-D])[\)\]]?\b",
+        re.IGNORECASE,
+    )
+
+    def apply(self, resps, docs):
+        del docs
+        filtered_resps = []
+        for response_group in resps:
+            response = response_group[0] if isinstance(response_group, list) else response_group
+            response = str(response).strip()
+            normalized = re.sub(r"[*_`]", "", response)
+            match = self._DIRECT_RE.fullmatch(normalized)
+            if match:
+                filtered_resps.append(match.group(1).upper())
+                continue
+            matches = list(self._LABELED_RE.finditer(normalized))
+            filtered_resps.append(matches[-1].group(1).upper() if matches else response)
+        return filtered_resps

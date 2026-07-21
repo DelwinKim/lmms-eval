@@ -95,7 +95,13 @@ def mmmu_pro_doc_to_visual(doc):
 # MMMU-PRO's all questions are multiple-choice questions
 def mmmu_pro_process_results(doc, results):
     pred = results[0]
-    if "question" in doc and "options" in doc:
+    # Parse whenever options are available. The vision variant has `options` but
+    # no text `question` (the question is rendered into the image); it still needs
+    # the multi-choice parser so answers like "(A)" or "The answer is A" are
+    # normalized to a bare letter before the exact-match comparison. Previously
+    # this required `question` too, so vision predictions were compared raw and a
+    # correct "(A)" failed against gold "A".
+    if "options" in doc:
         index2ans, all_choices = get_multi_choice_info(ast.literal_eval(doc["options"]))
         parsed_pred = parse_multi_choice_response(pred, all_choices, index2ans)
     else:

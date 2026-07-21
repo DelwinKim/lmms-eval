@@ -64,6 +64,22 @@ def mathvision_doc_to_text(doc, lmms_eval_specific_kwargs=None):
     return query_prompt
 
 
+def mathvision_doc_to_text_direct(doc, lmms_eval_specific_kwargs=None):
+    """Build a MathVision prompt that requests only the final answer."""
+    question, choices = doc["question"], doc["options"]
+    options = [chr(ord("A") + i) for i in range(len(choices))]
+
+    if choices:
+        choices_str = "\n".join(f"{option}. {choice}" for option, choice in zip(options, choices))
+        default_prompt = f"Respond with exactly one uppercase option letter ({', '.join(options)}). " "Do not provide reasoning or any additional text."
+        answer_prompt = lmms_eval_specific_kwargs.get("mc_prompt", default_prompt) if lmms_eval_specific_kwargs is not None else default_prompt
+        return f"{question}\nChoices:\n{choices_str}\n{answer_prompt}"
+
+    default_prompt = "Respond with only the final answer. Do not provide reasoning, explanation, " "or any additional text."
+    answer_prompt = lmms_eval_specific_kwargs.get("short_answer_prompt", default_prompt) if lmms_eval_specific_kwargs is not None else default_prompt
+    return f"{question}\n{answer_prompt}"
+
+
 def mathvision_gpt_eval_process_results(doc, results):
     correct_list = []
     pipeline = _get_pipeline()

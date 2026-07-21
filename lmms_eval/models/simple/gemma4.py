@@ -50,6 +50,7 @@ class Gemma4(lmms):
         interleave_visuals: Optional[bool] = False,
         system_prompt: Optional[str] = "You are a helpful assistant.",
         reasoning_prompt: Optional[str] = None,
+        dtype: Optional[str] = "bfloat16",
         **kwargs,
     ) -> None:
         super().__init__()
@@ -66,8 +67,23 @@ class Gemma4(lmms):
             self._device = torch.device(device)
             self.device_map = device_map if device_map else device
 
+        # Resolve the requested compute dtype. Defaults to bfloat16 (the model's
+        # native precision); pass dtype="float16" to load in fp16 (e.g. to match
+        # an fp16 ONNX build for a like-for-like comparison). Unknown/"auto"
+        # values fall back to bfloat16 to preserve the original behavior.
+        _DTYPE_MAP = {
+            "bfloat16": torch.bfloat16,
+            "bf16": torch.bfloat16,
+            "float16": torch.float16,
+            "fp16": torch.float16,
+            "half": torch.float16,
+            "float32": torch.float32,
+            "fp32": torch.float32,
+        }
+        resolved_dtype = _DTYPE_MAP.get(str(dtype).lower(), torch.bfloat16)
+
         model_kwargs = {
-            "torch_dtype": torch.bfloat16,
+            "torch_dtype": resolved_dtype,
             "device_map": self.device_map,
             "trust_remote_code": trust_remote_code,
         }
