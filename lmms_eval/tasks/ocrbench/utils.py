@@ -2,19 +2,27 @@ from loguru import logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 
-# Add the following functions to your existing utils.py file
-OCRBench_score = {
-    "Regular Text Recognition": 0,
-    "Irregular Text Recognition": 0,
-    "Artistic Text Recognition": 0,
-    "Handwriting Recognition": 0,
-    "Digit String Recognition": 0,
-    "Non-Semantic Text Recognition": 0,
-    "Scene Text-centric VQA": 0,
-    "Doc-oriented VQA": 0,
-    "Key Information Extraction": 0,
-    "Handwritten Mathematical Expression Recognition": 0,
+OCRBENCH_TOTAL_ROWS = 1000
+OCRBENCH_CATEGORY_TOTALS = {
+    "Regular Text Recognition": 50,
+    "Irregular Text Recognition": 50,
+    "Artistic Text Recognition": 50,
+    "Handwriting Recognition": 50,
+    "Digit String Recognition": 50,
+    "Non-Semantic Text Recognition": 50,
+    "Scene Text-centric VQA": 200,
+    "Doc-oriented VQA": 200,
+    "Key Information Extraction": 200,
+    "Handwritten Mathematical Expression Recognition": 100,
 }
+OCRBENCH_RECOGNITION_CATEGORIES = (
+    "Regular Text Recognition",
+    "Irregular Text Recognition",
+    "Artistic Text Recognition",
+    "Handwriting Recognition",
+    "Digit String Recognition",
+    "Non-Semantic Text Recognition",
+)
 
 
 def ocrbench_doc_to_visual(doc):
@@ -60,44 +68,55 @@ def ocrbench_process_results(doc, results):
             predict = pred.lower().strip().replace("\n", " ")
             if answer in predict:
                 score = 1
-    return {
-        "ocrbench_accuracy": {"question_type": doc["question_type"], "score": score, "prediction": pred, "ground_truth": gt_ans},
-    }
+    result = {"question_type": doc["question_type"], "score": score, "prediction": pred, "ground_truth": gt_ans}
+    return {"ocrbench_accuracy": result, "ocrbench_raw_score": result.copy()}
+
+
+def _summarize_ocrbench_results(results):
+    category_scores = dict.fromkeys(OCRBENCH_CATEGORY_TOTALS, 0)
+    category_rows = dict.fromkeys(OCRBENCH_CATEGORY_TOTALS, 0)
+    for result in results:
+        question_type = result["question_type"]
+        category_rows[question_type] += 1
+        category_scores[question_type] += result["score"]
+    return category_scores, category_rows
+
+
+def _write_ocrbench_report(results, args):
+    category_scores, category_rows = _summarize_ocrbench_results(results)
+    evaluated_rows = len(results)
+    recognition_score = sum(category_scores[category] for category in OCRBENCH_RECOGNITION_CATEGORIES)
+    final_score = sum(category_scores.values())
+    accuracy = final_score / evaluated_rows if evaluated_rows else 0.0
+    is_full_benchmark = evaluated_rows == OCRBENCH_TOTAL_ROWS
+    if not is_full_benchmark:
+        logger.warning(f"OCRBench raw score {final_score} is from a partial evaluation ({evaluated_rows}/{OCRBENCH_TOTAL_ROWS} rows); use ocrbench_accuracy for limit-aware comparisons.")
+
+    file_name = generate_submission_file("ocrbench_results.txt", args, subpath="results")
+    with open(file_name, "w", encoding="utf-8") as f:
+        print("######################### OCRBench #############################", file=f)
+        print(f"Evaluated rows: {evaluated_rows}/{OCRBENCH_TOTAL_ROWS}", file=f)
+        print(f"Accuracy over evaluated rows: {accuracy:.6f}", file=f)
+        raw_label = "canonical full-benchmark raw score" if is_full_benchmark else "partial raw score; not comparable to the canonical 1000-row score"
+        print(f"Raw score: {final_score} ({raw_label})", file=f)
+        print(f"Text Recognition: {recognition_score} ({sum(category_rows[category] for category in OCRBENCH_RECOGNITION_CATEGORIES)}/300 rows evaluated)", file=f)
+        print("---------------- Details of Recognition Score ------------------", file=f)
+        for category, total_rows in OCRBENCH_CATEGORY_TOTALS.items():
+            print(f"{category}: {category_scores[category]} ({category_rows[category]}/{total_rows} rows evaluated)", file=f)
+        print("--------------------- Final Score ------------------------------", file=f)
+        print(f"Final Raw Score ({evaluated_rows}/{OCRBENCH_TOTAL_ROWS} rows evaluated): {final_score}", file=f)
+    logger.info(f"OCR Bench results saved to {file_name}")
 
 
 def ocrbench_aggregate_accuracy(results, args):
-    for result in results:
-        OCRBench_score[result["question_type"]] += result["score"]
-    recognition_score = (
-        OCRBench_score["Regular Text Recognition"]
-        + OCRBench_score["Irregular Text Recognition"]
-        + OCRBench_score["Artistic Text Recognition"]
-        + OCRBench_score["Handwriting Recognition"]
-        + OCRBench_score["Digit String Recognition"]
-        + OCRBench_score["Non-Semantic Text Recognition"]
-    )
-    Final_score = recognition_score + OCRBench_score["Scene Text-centric VQA"] + OCRBench_score["Doc-oriented VQA"] + OCRBench_score["Key Information Extraction"] + OCRBench_score["Handwritten Mathematical Expression Recognition"]
-    file_name = generate_submission_file("ocrbench_results.txt", args, subpath="results")
-    with open(file_name, "w") as f:
-        print("######################### OCRBench #############################", file=f)
-        print(f"Text Recognition(Total 300): {recognition_score}", file=f)
-        print("---------------- Details of Recognition Score ------------------", file=f)
-        print(f"Regular Text Recognition(Total 50): {OCRBench_score['Regular Text Recognition']}", file=f)
-        print(f"Irregular Text Recognition(Total 50): {OCRBench_score['Irregular Text Recognition']}", file=f)
-        print(f"Artistic Text Recognition(Total 50): {OCRBench_score['Artistic Text Recognition']}", file=f)
-        print(f"Handwriting Recognition(Total 50): {OCRBench_score['Handwriting Recognition']}", file=f)
-        print(f"Digit String Recognition(Total 50): {OCRBench_score['Digit String Recognition']}", file=f)
-        print(f"Non-Semantic Text Recognition(Total 50): {OCRBench_score['Non-Semantic Text Recognition']}", file=f)
-        print("-------------------------------------------------------------", file=f)
-        print(f"Scene Text-centric VQA(Total 200): {OCRBench_score['Scene Text-centric VQA']}", file=f)
-        print("----------------------------------------------------------", file=f)
-        print(f"Doc-oriented VQA(Total 200): {OCRBench_score['Doc-oriented VQA']}", file=f)
-        print("----------------------------------------------------------------", file=f)
-        print(f"Key Information Extraction(Total 200): {OCRBench_score['Key Information Extraction']}", file=f)
-        print("----------------------------------------------------------------")
-        print(f"Handwritten Mathematical Expression Recognition(Total 100): {OCRBench_score['Handwritten Mathematical Expression Recognition']}", file=f)
-        print("--------------------- Final Score ------------------------------", file=f)
-        print(f"Final Score(Total 1000): {Final_score}", file=f)
-    logger.info(f"OCR Bench results saved to {file_name}")
-    # return {"Final Score":Final_score,"Text Recognition":recognition_score,'Scene Text-centric VQA':OCRBench_score['Scene Text-centric VQA'],'Doc-oriented VQA':OCRBench_score['Doc-oriented VQA'],'Key Information Extraction':OCRBench_score['Key Information Extraction'],'Handwritten Mathematical Expression Recognition':OCRBench_score['Handwritten Mathematical Expression Recognition']}
-    return Final_score / 1000  # return the final score as accuracy
+    del args
+    if not results:
+        raise ValueError("OCRBench accuracy requires at least one evaluated row.")
+    return sum(result["score"] for result in results) / len(results)
+
+
+def ocrbench_aggregate_raw_score(results, args):
+    if not results:
+        raise ValueError("OCRBench raw score requires at least one evaluated row.")
+    _write_ocrbench_report(results, args)
+    return sum(result["score"] for result in results)

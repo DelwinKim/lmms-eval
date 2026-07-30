@@ -147,6 +147,7 @@ class TaskConfig(dict):
     # Statistical evaluation options
     cluster_key: str = None  # Field name in process_results dict for clustering (e.g., "videoID")
     score_key: str = "score"  # Field name in process_results dict for 0/1 score (default: "score")
+    skip_stderr_metrics: list[str] = None  # Metrics whose aggregation is not mean-like (for example, sums).
 
     metadata: Union[str, list] = None  # by default, not used in the code. allows for users to pass arbitrary info to tasks
 

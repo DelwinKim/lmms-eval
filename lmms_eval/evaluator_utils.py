@@ -113,6 +113,7 @@ class TaskOutput:
         )
 
     def calculate_aggregate_metric(self, bootstrap_iters=100000) -> None:
+        skip_stderr_metrics = set((self.task_config or {}).get("skip_stderr_metrics", []))
         for (metric, filter_key), items in self.sample_metrics.items():
             if metric in self.task.aggregation():
                 agg_fn = self.task.aggregation()[metric]
@@ -122,7 +123,9 @@ class TaskOutput:
                 else:
                     self.agg_metrics[metric_key] = agg_fn(items)
                 self.sample_len = len(items)  # TODO: same sample size for each metric?
-                if isinstance(bootstrap_iters, int):
+                if metric in skip_stderr_metrics:
+                    self.agg_metrics[f"{metric}_stderr,{filter_key}"] = "N/A"
+                elif isinstance(bootstrap_iters, int):
                     stderr_fn = stderr_for_metric(
                         metric=agg_fn,
                         bootstrap_iters=min(bootstrap_iters, 100) if metric in ["bleu", "chrf", "ter"] else bootstrap_iters,
@@ -136,9 +139,14 @@ class TaskOutput:
         # Get cluster_key from task config (e.g., "videoID" for videomme)
         cluster_key = self.task_config.get("cluster_key") if self.task_config else None
         score_key = self.task_config.get("score_key", "score") if self.task_config else "score"
+        skip_stderr_metrics = set((self.task_config or {}).get("skip_stderr_metrics", []))
 
         for (metric, filter_key), items in self.sample_metrics.items():
             if metric not in self.task.aggregation():
+                continue
+            if metric in skip_stderr_metrics:
+                self.agg_metrics[f"{metric}_stderr_clt,{filter_key}"] = "N/A"
+                self.agg_metrics[f"{metric}_stderr_clustered,{filter_key}"] = "N/A"
                 continue
             # Extract scores and cluster_ids from items
             # Convention: dict items should have the score_key field (0/1) and optionally the field specified by cluster_key
@@ -278,10 +286,8 @@ def print_writeout(task) -> None:
         if inst.doc_id < 1:
             # Handle cases where inst.doc might be None (e.g., when using log_samples)
             target = "N/A (document is None)" if inst.doc is None else task.doc_to_target(inst.doc)
-            eval_logger.info(
-                f"Task: {task}; document {inst.doc_id}; context prompt (starting on next line):\
-    \n{inst.args[0]}\n(end of prompt on previous line)\ntarget string or answer choice index (starting on next line):\n{target}\n(end of target on previous line)"
-            )
+            eval_logger.info(f"Task: {task}; document {inst.doc_id}; context prompt (starting on next line):\
+    \n{inst.args[0]}\n(end of prompt on previous line)\ntarget string or answer choice index (starting on next line):\n{target}\n(end of target on previous line)")
             eval_logger.info(f"Request: {str(inst)}")
 
 
