@@ -102,3 +102,19 @@ class DirectAnswerFilter:
             matches = list(self._LABELED_RE.finditer(normalized))
             filtered_resps.append(matches[-1].group(1).upper() if matches else response)
         return filtered_resps
+
+
+class StrictDirectAnswerFilter:
+    """Accept only the requested single uppercase A-D response."""
+
+    _DIRECT_RE = re.compile(r"^[A-D]$")
+    _INVALID = "__invalid__"
+
+    def apply(self, resps, docs):
+        del docs
+        filtered_resps = []
+        for response_group in resps:
+            response = response_group[0] if isinstance(response_group, list) else response_group
+            response = str(response).strip()
+            filtered_resps.append(response if self._DIRECT_RE.fullmatch(response) else self._INVALID)
+        return filtered_resps
