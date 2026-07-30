@@ -112,6 +112,15 @@ def _clone_padding_request(pad_source: Instance) -> Instance:
     return pad_instance
 
 
+def _record_model_response(reqtype: str, req: Instance, response) -> None:
+    if reqtype == "loglikelihood":
+        token_counts = None
+    else:
+        response, token_counts = unwrap_generation_output(response)
+    req.resps.append(response)
+    req.token_counts.append(token_counts)
+
+
 def _enable_reentrant_filelocks() -> None:
     """Force singleton file locks so nested load_dataset calls cannot deadlock.
 
@@ -1087,10 +1096,8 @@ def evaluate(
         else:
             resps = getattr(lm, reqtype)(cloned_reqs)
 
-        for x, req in zip(resps, cloned_reqs):
-            text, tc = unwrap_generation_output(x)
-            req.resps.append(text)
-            req.token_counts.append(tc)
+        for response, req in zip(resps, cloned_reqs):
+            _record_model_response(reqtype, req, response)
 
         if is_budget_exceeded():
             eval_logger.warning("Token budget reached after '{}' requests. Skipping remaining request types.", reqtype)
