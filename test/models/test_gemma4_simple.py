@@ -72,12 +72,8 @@ def test_audio_content_resamples_in_memory_audio(monkeypatch):
 
 def test_build_user_content_orders_image_text_audio(monkeypatch):
     model = object.__new__(Gemma4)
-    model.processor = SimpleNamespace(
-        feature_extractor=SimpleNamespace(sampling_rate=16000)
-    )
-    monkeypatch.setattr(
-        model, "_encode_image_data_url", lambda image: "data:image/jpeg;base64,test"
-    )
+    model.processor = SimpleNamespace(feature_extractor=SimpleNamespace(sampling_rate=16000))
+    monkeypatch.setattr(model, "_encode_image_data_url", lambda image: "data:image/jpeg;base64,test")
     image = Image.new("RGB", (1, 1))
     audio = {"array": np.array([0.1, -0.1]), "sampling_rate": 16000}
 
@@ -89,9 +85,7 @@ def test_build_user_content_orders_image_text_audio(monkeypatch):
 
 def test_build_user_content_rejects_unknown_media():
     model = object.__new__(Gemma4)
-    model.processor = SimpleNamespace(
-        feature_extractor=SimpleNamespace(sampling_rate=16000)
-    )
+    model.processor = SimpleNamespace(feature_extractor=SimpleNamespace(sampling_rate=16000))
 
     with pytest.raises(TypeError, match="Unsupported Gemma 4 media input"):
         model._build_user_content("Prompt", [object()])
@@ -99,9 +93,7 @@ def test_build_user_content_rejects_unknown_media():
 
 def test_build_user_content_rejects_structured_video_dict():
     model = object.__new__(Gemma4)
-    model.processor = SimpleNamespace(
-        feature_extractor=SimpleNamespace(sampling_rate=16000)
-    )
+    model.processor = SimpleNamespace(feature_extractor=SimpleNamespace(sampling_rate=16000))
 
     with pytest.raises(TypeError, match="Structured video dictionaries"):
         model._build_user_content(
@@ -117,9 +109,7 @@ def test_audio_content_rejects_non_audio_path_dict():
 
 def test_build_user_content_treats_webm_path_as_video(monkeypatch):
     model = object.__new__(Gemma4)
-    model.processor = SimpleNamespace(
-        feature_extractor=SimpleNamespace(sampling_rate=16000)
-    )
+    model.processor = SimpleNamespace(feature_extractor=SimpleNamespace(sampling_rate=16000))
     monkeypatch.setattr("lmms_eval.models.simple.gemma4.os.path.exists", lambda _: True)
 
     content = model._build_user_content("Describe this.", ["/video.webm"])
@@ -140,9 +130,7 @@ def test_audio_content_accepts_explicit_webm_audio_path():
 def test_build_messages_omits_empty_system_prompt():
     model = object.__new__(Gemma4)
     model.system_prompt = ""
-    model.processor = SimpleNamespace(
-        feature_extractor=SimpleNamespace(sampling_rate=16000)
-    )
+    model.processor = SimpleNamespace(feature_extractor=SimpleNamespace(sampling_rate=16000))
 
     messages = model._build_messages("Transcribe this.", [])
 
