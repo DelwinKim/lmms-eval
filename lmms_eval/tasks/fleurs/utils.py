@@ -137,6 +137,13 @@ basic_normalizer = BasicTextNormalizer()
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
 
+GOOGLE_ASR_PROMPT = """Transcribe the following speech segment in English into English text.
+
+Follow these specific instructions for formatting the answer:
+* Only output the transcription, with no newlines.
+* When transcribing numbers, write the digits, i.e. write 1.7 and not one point seven, and write 3 instead of three.
+<audio>"""
+
 
 def fleurs_doc_to_audio(doc):
     return [doc["audio"]]
@@ -146,6 +153,11 @@ def fleurs_doc_to_text(doc, lmms_eval_specific_kwargs):
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     return f"{pre_prompt}Please recognize the speech and only output the recognized content:{post_prompt}"
+
+
+def google_asr_doc_to_text(doc, lmms_eval_specific_kwargs=None):
+    del doc, lmms_eval_specific_kwargs
+    return GOOGLE_ASR_PROMPT
 
 
 def fleurs_process_result(doc, result):

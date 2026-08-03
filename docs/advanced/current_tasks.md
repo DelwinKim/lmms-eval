@@ -399,6 +399,7 @@ python -m lmms_eval --tasks list_with_num
 ### Speech Recognition
 - [Common Voice 15](https://commonvoice.mozilla.org/) (common_voice_15)
 - [FLEURS](https://huggingface.co/datasets/google/fleurs) (fleurs)
+- [FLEURS with the Google Gemma ASR prompt](https://huggingface.co/datasets/google/fleurs) (fleurs_en_google_asr)
 - [GigaSpeech](https://github.com/SpeechColab/GigaSpeech) (gigaspeech)
 - [LibriSpeech](https://www.openslr.org/12) (librispeech)
 - [Open ASR](https://huggingface.co/datasets/esb/datasets) (open_asr)
